@@ -71,28 +71,13 @@ fn to_octets(ip: u32) -> Vec<u32> {
     vec![ip >> 24 & 0xff, ip >> 16 & 0xff, ip >> 8 & 0xff, ip & 0xff]
 }
 
-/// Validate the prefix in the cidr formatted address and return it
-fn get_prefix(line: &str) -> Result<u32, &'static str> {
-    let re = Regex::new(r"\b/(\d{1,2})$").unwrap();
-    let capture = re.captures(line).ok_or("invalid cidr address")?;
-    let limit: u32 = 32;
-
-    let digit = capture.get(1).unwrap().as_str().parse::<u32>().unwrap();
-    if digit > limit {
-        Err("invalid cidr address")
-    } else {
-        Ok(digit)
-    }
-}
-
-/// Validate the ip in the cidr formatted address and return it as a Vector, without the prefix
+/// Validate the cidr formatted ip and return it as a Vector
 fn get_ip_from_cidr(line: &str) -> Result<Vec<u32>, &'static str> {
-    // We add a "\b" at the end of the regex to ensure an ip is valid, with no extra numbers
-    let re = Regex::new(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b").unwrap();
+    let re = Regex::new(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})$").unwrap();
     let capture = re.captures(line).ok_or("invalid cidr address")?;
-    let limits: [u32; 4] = [255, 255, 255, 255];
+    let limits: [u32; 5] = [255, 255, 255, 255, 32];
 
-    let mut ip_vec: Vec<u32> = Vec::with_capacity(4);
+    let mut ip_vec: Vec<u32> = Vec::with_capacity(5);
     // We have to .get(i + 1) here because the capture group is group 1
     for (i, m) in limits.iter().enumerate() {
         let digit = capture.get(i + 1).unwrap().as_str().parse::<u32>().unwrap();
@@ -148,8 +133,8 @@ fn print_all(ip: &[u32], prefix: &u32) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let options = Options::parse();
-    let ip = get_ip_from_cidr(&options.ip_address)?;
-    let prefix = get_prefix(&options.ip_address)?;
+    let mut ip = get_ip_from_cidr(&options.ip_address)?;
+    let prefix = ip.pop().unwrap();
 
     print_all(&ip, &prefix);
 
